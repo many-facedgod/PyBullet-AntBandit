@@ -10,7 +10,7 @@ class BanditWalker(SharedMemoryClientEnv):
     def __init__(self, power):
         self.power = power
         self.camera_x = 0
-        self.walk_target_x = 1e3  # kilometer away
+        self.walk_target_x = 1e4  # kilometer away
         self.walk_target_y = 0
         self.start_pos_x, self.start_pos_y, self.start_pos_z = 0, 0, 0
         self.camera_x = 0
@@ -22,6 +22,8 @@ class BanditWalker(SharedMemoryClientEnv):
         return SinglePlayerStadiumScene(gravity=9.8, timestep=0.0165/4, frame_skip=4)
 
     def robot_specific_reset(self):
+        self.walk_target_x = self.real_targ_x[self.targ]
+        self.walk_target_y = self.real_targ_y[self.targ]
         for j in self.ordered_joints:
             j.reset_current_position(self.np_random.uniform( low=-0.1, high=0.1 ), 0)
         self.feet = [self.parts[f] for f in self.foot_list]
@@ -61,16 +63,18 @@ class BanditWalker(SharedMemoryClientEnv):
         self.walk_target_dist  = np.linalg.norm( [self.walk_target_y - self.body_xyz[1], self.walk_target_x - self.body_xyz[0]] )
         self.angle_to_target = self.walk_target_theta - yaw
 
-        self.rot_minus_yaw = np.array(
+        """self.rot_minus_yaw = np.array(
             [[np.cos(-yaw), -np.sin(-yaw), 0],
              [np.sin(-yaw),  np.cos(-yaw), 0],
              [           0,             0, 1]]
             )
-        vx, vy, vz = np.dot(self.rot_minus_yaw, self.robot_body.speed())  # rotate speed back to body point of view
+        vx, vy, vz = np.dot(self.rot_minus_yaw, self.robot_body.speed())  # rotate speed back to body point of view"""
+        vx, vy, vz = self.robot_body.speed()
 
         more = np.array([
             z-self.initial_z,
-            np.sin(self.angle_to_target), np.cos(self.angle_to_target),
+            #np.sin(self.angle_to_target), np.cos(self.angle_to_target),
+            0.0, 0.0,
             0.3*vx, 0.3*vy, 0.3*vz,    # 0.3 is just scaling typical speed into -1..+1, no physical sense here
             r, p], dtype=np.float32)
         return np.clip( np.concatenate([more] + [j] + [self.feet_contact]), -5, +5)

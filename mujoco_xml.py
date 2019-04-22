@@ -30,6 +30,9 @@ class BanditMujocoXmlEnv(gym.Env):
         self.model_xml = model_xml
         self.robot_name = robot_name
         self.potential_targets = [(5.0, 0.0), (0.0, -5.0), (0.0, 5.0), (-5.0, 0.0)]
+        self.real_targ_x = [1e4, 0.0, 0.0, -1e4]
+        self.real_targ_y = [0.0, -1e4, 1e4, 0.0]
+        self.targ = 0
 
     def seed(self, seed=None):
         self.np_random, seed = gym.utils.seeding.np_random(seed)
@@ -70,15 +73,16 @@ class BanditMujocoXmlEnv(gym.Env):
                 self.ordered_joints.append(j)
                 self.jdict[j.name] = j
         assert(self.cpp_robot)
+        target_pose = self.target.root_part.pose()
+        self.targ = np.random.choice([0, 1, 2, 3])
+        target_pose.set_xyz(self.potential_targets[self.targ][0], self.potential_targets[self.targ][1], 0.2)
+        self.target.set_pose(target_pose)
         self.robot_specific_reset()
         for r in self.mjcf:
             r.query_position()
         s = self.calc_state()    # optimization: calc_state() can calculate something in self.* for calc_potential() to use
         self.potential = self.calc_potential()
         self.camera = self.scene.cpp_world.new_camera_free_float(self.VIDEO_W, self.VIDEO_H, "video_camera")
-        target_pose = self.target.root_part.pose()
-        target_pose.set_xyz(5.0, 0.0, 0.2)
-        self.target.set_pose(target_pose)
         return s
 
     def render(self, mode='human', close=False):
